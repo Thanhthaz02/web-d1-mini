@@ -53,7 +53,7 @@
 
     // 3. GỬI LỆNH VÀ MÃ PIN XUỐNG D1 MINI
     function guiLenh(hanhDong) {
-      let maNhapVao = document.getElementById("maBaoMat").val;
+      let maNhapVao = document.getElementById("maBaoMat").value;
       
       if(maNhapVao === "") {
         alert("Vui lòng nhập mã PIN trước khi điều khiển!");
@@ -68,7 +68,7 @@
       });
       
       // Xóa ô nhập mã sau khi bấm để bảo mật
-      document.getElementById("maBaoMat").val = "";
+      document.getElementById("maBaoMat").value = "";
     }
   </script>
 </body>
