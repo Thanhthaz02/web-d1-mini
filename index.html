@@ -3,103 +3,73 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Điều Khiển D1 Mini</title>
+  <title>Điều Khiển Bảo Mật</title>
+  <!-- Nạp thư viện Firebase (Phiên bản 8 dễ dùng cho web tĩnh) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background-color: #e9ecef;
-      margin: 0;
-      padding: 20px;
-    }
-    h2 { color: #333; margin-bottom: 30px; }
-    
-    /* Trang trí khối chứa nút bấm */
-    .card {
-      background: white;
-      border-radius: 12px;
-      padding: 25px;
-      margin: 15px auto;
-      max-width: 350px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-    
-    /* Trang trí chữ trạng thái */
-    .status {
-      font-size: 18px;
-      color: #555;
-      margin-bottom: 15px;
-    }
-    .status span {
-      font-weight: bold;
-      color: #d32f2f; /* Màu đỏ mặc định */
-    }
-
-    /* Trang trí nút bấm */
-    button {
-      padding: 15px 30px;
-      font-size: 18px;
-      font-weight: bold;
-      border-radius: 8px;
-      background-color: #007BFF;
-      color: white;
-      border: none;
-      cursor: pointer;
-      width: 100%;
-      transition: 0.2s;
-    }
-    button:active {
-      background-color: #0056b3;
-      transform: scale(0.98); /* Hiệu ứng lún nút khi bấm */
-    }
+    body { font-family: Arial; text-align: center; background: #e9ecef; padding: 20px; }
+    .card { background: white; border-radius: 12px; padding: 25px; margin: 15px auto; max-width: 350px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .status { font-size: 18px; color: #555; margin-bottom: 15px; }
+    .status span { font-weight: bold; color: #007BFF; }
+    input { width: 90%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; text-align: center;}
+    button { padding: 15px 30px; font-size: 18px; font-weight: bold; border-radius: 8px; background-color: #007BFF; color: white; border: none; cursor: pointer; width: 100%; }
+    button:active { background-color: #0056b3; }
   </style>
 </head>
 <body>
 
-  <h2>BẢNG ĐIỀU KHIỂN</h2>
+  <h2>ĐIỀU KHIỂN D1 MINI</h2>
 
   <div class="card">
-    <div class="status">Đèn D4: <span id="tt-d4">Đang tải...</span></div>
-    <button onclick="dieuKhien('/batTatD4')">BẬT / TẮT D4</button>
-  </div>
-
-  <div class="card">
-    <div class="status">Mức sáng D3: <span id="tt-d3">Đang tải...</span></div>
-    <button onclick="dieuKhien('/chinhD3')">ĐỔI ĐỘ SÁNG</button>
+    <div class="status">Trạng thái: <span id="tt-d4">Đang kết nối...</span></div>
+    
+    <!-- Ô nhập mã bảo mật -->
+    <input type="password" id="maBaoMat" placeholder="Nhập mã PIN để điều khiển">
+    
+    <button onclick="guiLenh('BAT_TAT_D4')">BẬT / TẮT ĐÈN D4</button>
   </div>
 
   <script>
-    // Hàm gửi lệnh (AJAX) xuống con chip D1 Mini
-    function dieuKhien(url) {
-      fetch(url)
-        .then(response => response.text()) // Nhận văn bản chip trả về
-        .then(data => capNhatGiaoDien(data))
-        .catch(error => console.log("Lỗi mạng"));
-    }
+    // 1. CẤU HÌNH FIREBASE
+    const firebaseConfig = {
+      // DÁN ĐƯỜNG LINK FIREBASE CỦA BẠN VÀO ĐÂY (nhớ giữ lại dấu ngoặc kép)
+      databaseURL: "https://vidk-fb21b-default-rtdb.asia-southeast1.firebasedatabase.app/"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    // Hàm hỏi chip xem hiện tại đèn đang sáng hay tắt (Chạy khi vừa mở web)
-    function layTrangThai() {
-      fetch('/trangThai')
-        .then(response => response.text())
-        .then(data => capNhatGiaoDien(data));
-    }
-
-    // Hàm đổi chữ trên màn hình. 
-    // Chip sẽ trả về chuỗi có dạng: "ĐANG SÁNG|100" hoặc "ĐANG TẮT|255"
-    function capNhatGiaoDien(data) {
-      let phanTach = data.split('|'); // Cắt chuỗi tại dấu gạch đứng
-      if (phanTach.length === 2) {
+    // 2. NGHE TRẠNG THÁI TỪ D1 MINI GỬI LÊN
+    // Mạch sẽ gửi lên node /thiet_bi/trang_thai_d4
+    db.ref('/thiet_bi/trang_thai_d4').on('value', (snapshot) => {
+      const data = snapshot.val();
+      if(data) {
         let textD4 = document.getElementById("tt-d4");
-        textD4.innerText = phanTach[0];
-        // Đổi màu chữ: Nếu SÁNG thì chữ xanh, TẮT thì chữ đỏ
-        textD4.style.color = (phanTach[0] === "ĐANG SÁNG") ? "#28a745" : "#d32f2f"; 
-        
-        document.getElementById("tt-d3").innerText = phanTach[1];
+        textD4.innerText = data;
+        textD4.style.color = (data === "SÁNG") ? "#28a745" : "#d32f2f";
       }
-    }
+    });
 
-    // Tự động lấy trạng thái ngay khi tải trang xong
-    window.onload = layTrangThai;
+    // 3. GỬI LỆNH VÀ MÃ PIN XUỐNG D1 MINI
+    function guiLenh(hanhDong) {
+      let maNhapVao = document.getElementById("maBaoMat").val;
+      
+      if(maNhapVao === "") {
+        alert("Vui lòng nhập mã PIN trước khi điều khiển!");
+        return;
+      }
+
+      // Gửi mã PIN và lệnh lên Firebase
+      db.ref('/thiet_bi').update({
+        ma_pin: maNhapVao,
+        lenh_dieu_khien: hanhDong,
+        thoi_gian: Date.now() // Sinh số ngẫu nhiên để mạch nhận diện lệnh mới
+      });
+      
+      // Xóa ô nhập mã sau khi bấm để bảo mật
+      document.getElementById("maBaoMat").val = "";
+    }
   </script>
 </body>
 </html>
